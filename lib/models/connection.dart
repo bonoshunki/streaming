@@ -24,9 +24,7 @@ enum CallState {
 }
 
 class Connection {
-  Connection({required this.cid, this.pid = '', required this.rid});
-  // peerId
-  String pid;
+  Connection({required this.cid, required this.rid});
   // connectionId
   String cid;
   // roomId
@@ -138,21 +136,20 @@ class Signaling {
     return stream;
   }
 
-  _send(event, data) {
-    var request = Map();
-    request["type"] = event;
-    request["data"] = data;
-    // data["type"] = event;
-    _socket?.send(_encoder.convert(data));
-  }
+  // _send(event, data) {
+  //   var request = Map();
+  //   request["type"] = event;
+  //   request["data"] = data;
+  //   // data["type"] = event;
+  //   _socket?.send(_encoder.convert(data));
+  // }
 
   _sendVer2(data) {
     _socket?.send(_encoder.convert(data));
   }
 
   Future<Connection> _createConnection(Connection? connection,
-      {String peerId = '',
-      required String connectionId,
+      {required String connectionId,
       required String media,
       required bool screenSharing}) async {
     var newConnection = connection ?? Connection(cid: connectionId, rid: _host);
@@ -225,95 +222,13 @@ class Signaling {
     return newConnection;
   }
 
-  Future<Connection> _createConnectionForViewer(Connection? connection,
-      {String peerId = '',
-      required String connectionId,
-      required bool screenSharing}) async {
-    var newConnection = connection ?? Connection(cid: connectionId, rid: _host);
-    _localStream = await createStream('video', screenSharing);
-    print(_iceServers);
-    RTCPeerConnection pc = await createPeerConnection({
-      ..._iceServers,
-      ...{'sdpSemantics': sdpSemantics}
-    }, _config);
-    switch (sdpSemantics) {
-      case 'plan-b':
-        pc.onAddStream = (MediaStream stream) {
-          onAddRemoteStream?.call(newConnection, stream);
-          _remoteStreams.add(stream);
-        };
-        await pc.addStream(_localStream!);
-        break;
-      case 'unified-plan':
-        pc.onTrack = (event) {
-          if (event.track.kind == 'video') {
-            onAddRemoteStream?.call(newConnection, event.streams[0]);
-          }
-        };
-        break;
-    }
-
-    pc.onIceCandidate = (candidate) async {
-      if (candidate == null) {
-        print('onIceCandidate: complete!');
-        return;
-      }
-
-      await Future.delayed(
-          const Duration(seconds: 1),
-          () => _sendVer2({
-                'type': 'candidate',
-                // 'to': peerId,
-                'from': _selfId,
-                'candidate': {
-                  'sdpMLineIndex': candidate.sdpMlineIndex,
-                  'sdpMid': candidate.sdpMid,
-                  'candidate': candidate.candidate,
-                },
-                'connection_id': connection!.cid,
-                // _send('candidate', {
-                //       // 'to': peerId,
-                //       'from': _selfId,
-                //       'candidate': {
-                //         'sdpMLineIndex': candidate.sdpMlineIndex,
-                //         'sdpMid': candidate.sdpMid,
-                //         'candidate': candidate.candidate,
-                //       },
-              }));
-    };
-    pc.onIceConnectionState = (state) {};
-
-    pc.onRemoveStream = (stream) {
-      onRemoveRemoteStream?.call(newConnection, stream);
-      _remoteStreams.removeWhere((it) {
-        return (it.id == stream.id);
-      });
-    };
-
-    // pc.onDataChannel = (channel) {
-    //   _addDataChannel(newConnection, channel);
-    // };
-
-    newConnection.pc = pc;
-    print('created new connection');
-    return newConnection;
-  }
-
   Future<void> _createOffer(Connection connection, String media) async {
     try {
       RTCSessionDescription s = await connection.pc!
           .createOffer(media == 'data' ? _dcConstraints : {});
       await connection.pc!.setLocalDescription(s);
-      // _send('offer', {
-      //   'to': connection.pid,
-      //   'from': _selfId,
-      //   'description': {'sdp': s.sdp, 'type': s.type},
-      //   'connection_id': connection.cid,
-      //   'media': media,
-      // });
       _sendVer2({
         'type': 'offer',
-        'to': connection.pid,
         'from': _selfId,
         'description': {'sdp': s.sdp, 'type': s.type},
         'connection_id': connection.cid,
@@ -324,8 +239,8 @@ class Signaling {
     }
   }
 
-  void invite(String peerId, String media, bool useScreen) async {
-    var connectionId = _selfId + '-' + peerId;
+  void invite(String media, bool useScreen) async {
+    var connectionId = _selfId;
     Connection connection = await _createConnection(null,
         // peerId: peerId,
         connectionId: connectionId,
@@ -335,7 +250,9 @@ class Signaling {
     // if (media == 'data') {
     //   _createDataChannel(connection);
     // }
-    _createOffer(connection, media);
+    if(!_streamer) {
+      _createOffer(connection, media);
+    }
     onCallStateChange?.call(connection, CallState.CallStateNew);
   }
 
@@ -367,7 +284,6 @@ class Signaling {
       await connection.pc!.setLocalDescription(s);
       _sendVer2({
         'type': 'answer',
-        'to': connection.pid,
         'from': _selfId,
         'description': {'sdp': s.sdp, 'type': s.type},
         'connection_id': connection.cid,
@@ -415,6 +331,7 @@ class Signaling {
             mapData['roomId'] = _host;
             List<dynamic> streamInfo = [];
             streamInfo.add(mapData);
+            print(mapData);
             // mapData.forEach((key, value) => peers.add(value));
             if (onPeersUpdate != null) {
               Map<String, dynamic> event = Map<String, dynamic>();
@@ -427,22 +344,18 @@ class Signaling {
             // conn = await _createConnectionForViewer(conn,
             //     connectionId: _selfId, screenSharing: false);
             // await _createOffer(conn, 'video');
-            invite('', 'video', false);
+            invite('video', false);
           }
         }
         break;
       case 'offer':
         {
-          var peerId = mapData['from'];
           var description = mapData['description'];
           var media = mapData['media'];
           var connectionId = mapData['connection_id'];
           var connection = _connections[connectionId];
           var newConnection = await _createConnection(connection,
-              peerId: peerId,
-              connectionId: connectionId,
-              media: media,
-              screenSharing: false);
+              connectionId: connectionId, media: media, screenSharing: false);
           _connections[connectionId] = newConnection;
           await newConnection.pc?.setRemoteDescription(
               RTCSessionDescription(description['sdp'], description['type']));
@@ -467,10 +380,10 @@ class Signaling {
         break;
       case 'candidate':
         {
-          var peerId = mapData['from'];
           var candidateMap = mapData['candidate'];
           var connectionId = mapData['connection_id'];
           var connection = _connections[connectionId];
+          print(_connections);
           RTCIceCandidate candidate = RTCIceCandidate(candidateMap['candidate'],
               candidateMap['sdpMid'], candidateMap['sdpMLineIndex']);
 
@@ -482,7 +395,7 @@ class Signaling {
             }
           } else {
             _connections[connectionId] =
-                Connection(pid: peerId, cid: connectionId, rid: _host)
+                Connection(cid: connectionId, rid: _host)
                   ..remoteCandidates.add(candidate);
           }
         }
@@ -547,11 +460,6 @@ class Signaling {
     _socket?.onOpen = () {
       print('onOpen');
       onSignalingStateChange?.call(SignalingState.ConnectionOpen);
-      // _send('new', {
-      //   'name': DeviceInfo.label,
-      //   'id': _selfId,
-      //   'user_agent': DeviceInfo.userAgent
-      // });
       _sendVer2({
         'type': streamer ? 'onair' : 'watch',
         'roomId': _host,

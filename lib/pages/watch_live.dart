@@ -99,9 +99,9 @@ class _WatchState extends State<Watch> {
     });
   }
 
-  _invitePeer(BuildContext context, String peerId, bool useScreen) async {
-    if (_signaling != null && peerId != _selfId) {
-      _signaling?.invite(peerId, 'video', useScreen);
+  _invitePeer(BuildContext context, bool useScreen) async {
+    if (_signaling != null) {
+      _signaling?.invite('video', useScreen);
     }
   }
 

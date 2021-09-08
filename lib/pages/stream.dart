@@ -98,9 +98,9 @@ class _StreamState extends State<Stream> {
     // });
   }
 
-  _invitePeer(BuildContext context, String peerId, bool useScreen) async {
-    if (_signaling != null && peerId != _selfId) {
-      _signaling?.invite(peerId, 'video', useScreen);
+  _invitePeer(BuildContext context,bool useScreen) async {
+    if (_signaling != null) {
+      _signaling?.invite('video', useScreen);
     }
   }
 
@@ -141,7 +141,7 @@ class _StreamState extends State<Stream> {
                       Icons.videocam,
                       color: Colors.black,
                         ),
-                    onPressed: () => _invitePeer(context, peer['connectionId'], false),
+                    onPressed: () => _invitePeer(context, false),
                     tooltip: 'Video calling',
                   ),
                   IconButton(
@@ -151,7 +151,7 @@ class _StreamState extends State<Stream> {
                       Icons.screen_share,
                       color: Colors.grey,
                         ),
-                    onPressed: () => _invitePeer(context, peer['connectionId'], true),
+                    onPressed: () => _invitePeer(context, true),
                     tooltip: 'Screen sharing',
                   )
                 ])),
