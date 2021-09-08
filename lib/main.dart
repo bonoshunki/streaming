@@ -3,7 +3,8 @@ import 'dart:core';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'pages/call_sample.dart';
+import 'pages/stream.dart';
+import 'pages/watch_live.dart';
 import 'pages/data_channel_sample.dart';
 import 'models/route_item.dart';
 
@@ -25,6 +26,7 @@ class _MyAppState extends State<MyApp> {
   late SharedPreferences _prefs;
 
   bool _datachannel = false;
+  bool _streamer = false;
   @override
   initState() {
     super.initState();
@@ -80,9 +82,12 @@ class _MyAppState extends State<MyApp> {
           Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (BuildContext context) => _datachannel
-                      ? DataChannelSample(host: _server)
-                      : CallSample(host: _server)));
+                  // builder: (BuildContext context) => _datachannel
+                  //     ? DataChannelSample(host: _server)
+                  //     : CallSample(host: _server)));
+                  builder: (BuildContext context) => _streamer
+                      ? Stream(host: _server, streamer: _streamer)
+                      : Watch(host: _server, streamer: _streamer)));
         }
       }
     });
@@ -121,19 +126,33 @@ class _MyAppState extends State<MyApp> {
   _initItems() {
     items = <RouteItem>[
       RouteItem(
-          title: 'P2P Call Sample',
-          subtitle: 'P2P Call Sample.',
+          title: 'Stream',
+          subtitle: 'For Streamer',
           push: (BuildContext context) {
-            _datachannel = false;
+            _streamer = true;
             _showAddressDialog(context);
           }),
       RouteItem(
-          title: 'Data Channel Sample',
-          subtitle: 'P2P Data Channel.',
+          title: 'Watch live',
+          subtitle: 'For viewer.',
           push: (BuildContext context) {
-            _datachannel = true;
+            _streamer = false;
             _showAddressDialog(context);
           }),
+      // RouteItem(
+      //     title: 'P2P Call Sample',
+      //     subtitle: 'P2P Call Sample.',
+      //     push: (BuildContext context) {
+      //       _datachannel = false;
+      //       _showAddressDialog(context);
+      //     }),
+      // RouteItem(
+      //     title: 'Data Channel Sample',
+      //     subtitle: 'P2P Data Channel.',
+      //     push: (BuildContext context) {
+      //       _datachannel = true;
+      //       _showAddressDialog(context);
+      //     }),
     ];
   }
 }
