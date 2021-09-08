@@ -379,8 +379,9 @@ class Signaling {
       case 'candidate':
         {
           var candidateMap = mapData['candidate'];
-          var connectionId = mapData['connection_id'];
-          var connection = _connections[connectionId];
+          // var connectionId = mapData['connection_id'];
+          // var connection = _connections[connectionId];
+          var connection = _connections[_selfId];
           print(_connections);
           RTCIceCandidate candidate = RTCIceCandidate(candidateMap['candidate'],
               candidateMap['sdpMid'], candidateMap['sdpMLineIndex']);
@@ -391,9 +392,12 @@ class Signaling {
               connection.remoteCandidates.add(candidate);
             }
           } else {
-            _connections[connectionId] =
-                Connection(cid: connectionId, rid: _host)
+            _connections[_selfId] =
+                Connection(cid: _selfId, rid: _host)
                   ..remoteCandidates.add(candidate);
+            // _connections[connectionId] =
+            //     Connection(cid: connectionId, rid: _host)
+            //       ..remoteCandidates.add(candidate);
           }
         }
         break;
