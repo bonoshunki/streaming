@@ -132,7 +132,6 @@ class Signaling {
     MediaStream stream = userScreen
         ? await navigator.mediaDevices.getDisplayMedia(mediaConstraints)
         : await navigator.mediaDevices.getUserMedia(mediaConstraints);
-    onLocalStream?.call(stream);
     return stream;
   }
 
@@ -156,7 +155,6 @@ class Signaling {
     if (media != 'data')
       _localStream = await createStream(media, screenSharing);
     print(_iceServers);
-    print('aaaaaaa');
     RTCPeerConnection pc = await createPeerConnection({
       ..._iceServers,
       ...{'sdpSemantics': sdpSemantics}
@@ -193,7 +191,6 @@ class Signaling {
           const Duration(seconds: 1),
           () => _sendVer2({
                 'type': 'candidate',
-                // 'to': peerId,
                 'from': _selfId,
                 'candidate': {
                   'sdpMLineIndex': candidate.sdpMlineIndex,
@@ -250,7 +247,7 @@ class Signaling {
     // if (media == 'data') {
     //   _createDataChannel(connection);
     // }
-    if(!_streamer) {
+    if (!_streamer) {
       _createOffer(connection, media);
     }
     onCallStateChange?.call(connection, CallState.CallStateNew);
@@ -351,15 +348,16 @@ class Signaling {
       case 'offer':
         {
           var description = mapData['description'];
-          var media = mapData['media'];
-          var connectionId = mapData['connection_id'];
-          var connection = _connections[connectionId];
-          var newConnection = await _createConnection(connection,
-              connectionId: connectionId, media: media, screenSharing: false);
-          _connections[connectionId] = newConnection;
-          await newConnection.pc?.setRemoteDescription(
+          Connection? newConnection = _connections[_selfId];
+          // var media = mapData['media'];
+          // var connectionId = mapData['connection_id'];
+          // var connection = _connections[connectionId];
+          // var newConnection = await _createConnection(connection,
+          //     connectionId: connectionId, media: media, screenSharing: false);
+          // _connections[connectionId] = newConnection;
+          await newConnection!.pc?.setRemoteDescription(
               RTCSessionDescription(description['sdp'], description['type']));
-          await _createAnswer(newConnection, media);
+          await _createAnswer(newConnection, 'video');
           if (newConnection.remoteCandidates.length > 0) {
             newConnection.remoteCandidates.forEach((candidate) async {
               await newConnection.pc?.addCandidate(candidate);
@@ -386,7 +384,6 @@ class Signaling {
           print(_connections);
           RTCIceCandidate candidate = RTCIceCandidate(candidateMap['candidate'],
               candidateMap['sdpMid'], candidateMap['sdpMLineIndex']);
-
           if (connection != null) {
             if (connection.pc != null) {
               await connection.pc?.addCandidate(candidate);

@@ -6,7 +6,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 class Stream extends StatefulWidget {
   static String tag = 'call_sample';
   final String host;
-  final bool streamer ;
+  final bool streamer;
   Stream({required this.host, required this.streamer});
 
   @override
@@ -46,7 +46,8 @@ class _StreamState extends State<Stream> {
   }
 
   void _connect() async {
-    _signaling ??= Signaling(widget.host, widget.streamer)..connect(widget.streamer);
+    _signaling ??= Signaling(widget.host, widget.streamer)
+      ..connect(widget.streamer);
     _signaling?.onSignalingStateChange = (SignalingState state) {
       switch (state) {
         case SignalingState.ConnectionClosed:
@@ -98,7 +99,7 @@ class _StreamState extends State<Stream> {
     // });
   }
 
-  _invitePeer(BuildContext context,bool useScreen) async {
+  _invitePeer(BuildContext context, bool useScreen) async {
     if (_signaling != null) {
       _signaling?.invite('video', useScreen);
     }
@@ -123,11 +124,10 @@ class _StreamState extends State<Stream> {
     return ListBody(children: <Widget>[
       ListTile(
         title: Text(
-          // self
-          //   ? peer['connectionId'] + '[Your self]'
-          //   : peer['connectionId'] + '[' + peer['connectionId'] + ']'
-          'Choose video camera or screen sharing (Screen sharing isn\'t available for now)'
-            ),
+            // self
+            //   ? peer['connectionId'] + '[Your self]'
+            //   : peer['connectionId'] + '[' + peer['connectionId'] + ']'
+            'Choose video camera or screen sharing (Screen sharing isn\'t available for now)'),
         onTap: null,
         trailing: SizedBox(
             width: 100.0,
@@ -140,7 +140,7 @@ class _StreamState extends State<Stream> {
                       //   color: self ? Colors.grey : Colors.black
                       Icons.videocam,
                       color: Colors.black,
-                        ),
+                    ),
                     onPressed: () => _invitePeer(context, false),
                     tooltip: 'Video calling',
                   ),
@@ -150,7 +150,7 @@ class _StreamState extends State<Stream> {
                       //   color: self ? Colors.grey : Colors.black
                       Icons.screen_share,
                       color: Colors.grey,
-                        ),
+                    ),
                     onPressed: () => _invitePeer(context, true),
                     tooltip: 'Screen sharing',
                   )
