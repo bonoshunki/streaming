@@ -6,8 +6,6 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../widgets/random_string.dart';
 
-import '../widgets/device_info.dart'
-    if (dart.library.js) '../utils/device_info_web.dart';
 import '../widgets/websocket.dart'
     if (dart.library.js) '../utils/websocket_web.dart';
 
@@ -47,8 +45,7 @@ class Signaling {
   SimpleWebSocket? _socket;
   String _host;
   bool _streamer;
-  static int _port = 3000;
-  Connection? _selfConn;
+  // static int _port = 3000;
   Map<String, Connection> _connections = {};
   MediaStream? _localStream;
   List<MediaStream> _remoteStreams = <MediaStream>[];
@@ -162,10 +159,12 @@ class Signaling {
     if (media != 'data')
       _localStream = await createStream(media, screenSharing);
     print(_iceServers);
+    print('aaaaaaa');
     RTCPeerConnection pc = await createPeerConnection({
       ..._iceServers,
       ...{'sdpSemantics': sdpSemantics}
     }, _config);
+    print('1');
     if (media != 'data') {
       switch (sdpSemantics) {
         case 'plan-b':
@@ -187,26 +186,16 @@ class Signaling {
           break;
       }
     }
-
+    print('2');
     pc.onIceCandidate = (candidate) async {
       if (candidate == null) {
         print('onIceCandidate: complete!');
         return;
       }
-
       await Future.delayed(
           const Duration(seconds: 1),
-          () => 
-          // _send('candidate', {
-          //       // 'to': peerId,
-          //       'from': _selfId,
-          //       'candidate': {
-          //         'sdpMLineIndex': candidate.sdpMlineIndex,
-          //         'sdpMid': candidate.sdpMid,
-          //         'candidate': candidate.candidate,
-          //       },
-          _sendVer2({
-                'type':'candidate', 
+          () => _sendVer2({
+                'type': 'candidate',
                 // 'to': peerId,
                 'from': _selfId,
                 'candidate': {
@@ -214,6 +203,7 @@ class Signaling {
                   'sdpMid': candidate.sdpMid,
                   'candidate': candidate.candidate,
                 },
+                'connection_id': connectionId,
               }));
     };
 
@@ -240,6 +230,7 @@ class Signaling {
       required String connectionId,
       required bool screenSharing}) async {
     var newConnection = connection ?? Connection(cid: connectionId, rid: _host);
+    _localStream = await createStream('video', screenSharing);
     print(_iceServers);
     RTCPeerConnection pc = await createPeerConnection({
       ..._iceServers,
@@ -270,8 +261,7 @@ class Signaling {
 
       await Future.delayed(
           const Duration(seconds: 1),
-          () => 
-          _sendVer2({
+          () => _sendVer2({
                 'type': 'candidate',
                 // 'to': peerId,
                 'from': _selfId,
@@ -280,17 +270,17 @@ class Signaling {
                   'sdpMid': candidate.sdpMid,
                   'candidate': candidate.candidate,
                 },
-          // _send('candidate', {
-          //       // 'to': peerId,
-          //       'from': _selfId,
-          //       'candidate': {
-          //         'sdpMLineIndex': candidate.sdpMlineIndex,
-          //         'sdpMid': candidate.sdpMid,
-          //         'candidate': candidate.candidate,
-          //       },
+                'connection_id': connection!.cid,
+                // _send('candidate', {
+                //       // 'to': peerId,
+                //       'from': _selfId,
+                //       'candidate': {
+                //         'sdpMLineIndex': candidate.sdpMlineIndex,
+                //         'sdpMid': candidate.sdpMid,
+                //         'candidate': candidate.candidate,
+                //       },
               }));
     };
-
     pc.onIceConnectionState = (state) {};
 
     pc.onRemoveStream = (stream) {
@@ -321,8 +311,8 @@ class Signaling {
       //   'connection_id': connection.cid,
       //   'media': media,
       // });
-      _sendVer2(
-      {'type': 'offer', 
+      _sendVer2({
+        'type': 'offer',
         'to': connection.pid,
         'from': _selfId,
         'description': {'sdp': s.sdp, 'type': s.type},
@@ -342,11 +332,10 @@ class Signaling {
         media: media,
         screenSharing: useScreen);
     _connections[connectionId] = connection;
-    _selfConn = connection;
     // if (media == 'data') {
     //   _createDataChannel(connection);
     // }
-    // _createOffer(connection, media);
+    _createOffer(connection, media);
     onCallStateChange?.call(connection, CallState.CallStateNew);
   }
 
@@ -377,7 +366,7 @@ class Signaling {
           .createAnswer(media == 'data' ? _dcConstraints : {});
       await connection.pc!.setLocalDescription(s);
       _sendVer2({
-        'type': 'answer', 
+        'type': 'answer',
         'to': connection.pid,
         'from': _selfId,
         'description': {'sdp': s.sdp, 'type': s.type},
@@ -410,8 +399,7 @@ class Signaling {
   void onMessage(message) async {
     Map<String, dynamic> mapData = message;
     var data = mapData['data'];
-    mapData.remove('type');
-    
+
     switch (mapData['type']) {
       case 'ping':
         {
@@ -421,6 +409,7 @@ class Signaling {
         }
         break;
       case 'accept':
+        // mapData.remove('type');
         {
           if (_streamer) {
             mapData['roomId'] = _host;
@@ -432,12 +421,13 @@ class Signaling {
               event['self'] = _selfId;
               event['streamInfo'] = streamInfo;
               onPeersUpdate?.call(event);
-            } 
-            } else {
-              Connection conn = Connection(cid: _selfId, rid: _host);
-              conn = await _createConnectionForViewer(conn,
-                  connectionId: _selfId, screenSharing: false);
-              _createOffer(conn, '');
+            }
+          } else {
+            // Connection conn = Connection(cid: _selfId, rid: _host);
+            // conn = await _createConnectionForViewer(conn,
+            //     connectionId: _selfId, screenSharing: false);
+            // await _createOffer(conn, 'video');
+            invite('', 'video', false);
           }
         }
         break;
@@ -454,7 +444,6 @@ class Signaling {
               media: media,
               screenSharing: false);
           _connections[connectionId] = newConnection;
-          _selfConn = newConnection;
           await newConnection.pc?.setRemoteDescription(
               RTCSessionDescription(description['sdp'], description['type']));
           await _createAnswer(newConnection, media);
@@ -500,7 +489,6 @@ class Signaling {
         break;
       case 'leave':
         {
-
           var peerId = mapData as String;
           _closeConnectionByPeerId(peerId);
         }
