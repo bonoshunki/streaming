@@ -196,7 +196,17 @@ class Signaling {
 
       await Future.delayed(
           const Duration(seconds: 1),
-          () => _send('candidate', {
+          () => 
+          // _send('candidate', {
+          //       // 'to': peerId,
+          //       'from': _selfId,
+          //       'candidate': {
+          //         'sdpMLineIndex': candidate.sdpMlineIndex,
+          //         'sdpMid': candidate.sdpMid,
+          //         'candidate': candidate.candidate,
+          //       },
+          _sendVer2({
+                'type':'candidate', 
                 // 'to': peerId,
                 'from': _selfId,
                 'candidate': {
@@ -260,7 +270,9 @@ class Signaling {
 
       await Future.delayed(
           const Duration(seconds: 1),
-          () => _send('candidate', {
+          () => 
+          _sendVer2({
+                'type': 'candidate',
                 // 'to': peerId,
                 'from': _selfId,
                 'candidate': {
@@ -268,6 +280,14 @@ class Signaling {
                   'sdpMid': candidate.sdpMid,
                   'candidate': candidate.candidate,
                 },
+          // _send('candidate', {
+          //       // 'to': peerId,
+          //       'from': _selfId,
+          //       'candidate': {
+          //         'sdpMLineIndex': candidate.sdpMlineIndex,
+          //         'sdpMid': candidate.sdpMid,
+          //         'candidate': candidate.candidate,
+          //       },
               }));
     };
 
@@ -294,11 +314,20 @@ class Signaling {
       RTCSessionDescription s = await connection.pc!
           .createOffer(media == 'data' ? _dcConstraints : {});
       await connection.pc!.setLocalDescription(s);
-      _send('answer', {
+      // _send('offer', {
+      //   'to': connection.pid,
+      //   'from': _selfId,
+      //   'description': {'sdp': s.sdp, 'type': s.type},
+      //   'connection_id': connection.cid,
+      //   'media': media,
+      // });
+      _sendVer2(
+      {'type': 'offer', 
         'to': connection.pid,
         'from': _selfId,
         'description': {'sdp': s.sdp, 'type': s.type},
         'connection_id': connection.cid,
+        'media': media,
       });
     } catch (e) {
       print(e.toString());
@@ -332,10 +361,10 @@ class Signaling {
   }
 
   void bye(String connectionId) {
-    _send('bye', {
-      'connection_id': connectionId,
-      'from': _selfId,
-    });
+    // _send('bye', {
+    //   'connection_id': connectionId,
+    //   'from': _selfId,
+    // });
     var conn = _connections[connectionId];
     if (conn != null) {
       _closeConnection(conn);
@@ -347,12 +376,19 @@ class Signaling {
       RTCSessionDescription s = await connection.pc!
           .createAnswer(media == 'data' ? _dcConstraints : {});
       await connection.pc!.setLocalDescription(s);
-      _send('answer', {
+      _sendVer2({
+        'type': 'answer', 
         'to': connection.pid,
         'from': _selfId,
         'description': {'sdp': s.sdp, 'type': s.type},
         'connection_id': connection.cid,
       });
+      // _send('answer', {
+      //   'to': connection.pid,
+      //   'from': _selfId,
+      //   'description': {'sdp': s.sdp, 'type': s.type},
+      //   'connection_id': connection.cid,
+      // });
     } catch (e) {
       print(e.toString());
     }
@@ -374,7 +410,8 @@ class Signaling {
   void onMessage(message) async {
     Map<String, dynamic> mapData = message;
     var data = mapData['data'];
-
+    mapData.remove('type');
+    
     switch (mapData['type']) {
       case 'ping':
         {
@@ -386,8 +423,6 @@ class Signaling {
       case 'accept':
         {
           if (_streamer) {
-            mapData.remove('type');
-            print(mapData);
             mapData['roomId'] = _host;
             List<dynamic> streamInfo = [];
             streamInfo.add(mapData);
@@ -397,21 +432,21 @@ class Signaling {
               event['self'] = _selfId;
               event['streamInfo'] = streamInfo;
               onPeersUpdate?.call(event);
+            } 
             } else {
               Connection conn = Connection(cid: _selfId, rid: _host);
               conn = await _createConnectionForViewer(conn,
                   connectionId: _selfId, screenSharing: false);
               _createOffer(conn, '');
-            }
           }
         }
         break;
       case 'offer':
         {
-          var peerId = data['from'];
-          var description = data['description'];
-          var media = data['media'];
-          var connectionId = data['connection_id'];
+          var peerId = mapData['from'];
+          var description = mapData['description'];
+          var media = mapData['media'];
+          var connectionId = mapData['connection_id'];
           var connection = _connections[connectionId];
           var newConnection = await _createConnection(connection,
               peerId: peerId,
@@ -434,8 +469,8 @@ class Signaling {
         break;
       case 'answer':
         {
-          var description = data['description'];
-          var connectionId = data['connection_id'];
+          var description = mapData['description'];
+          var connectionId = mapData['connection_id'];
           var connection = _connections[connectionId];
           connection?.pc?.setRemoteDescription(
               RTCSessionDescription(description['sdp'], description['type']));
@@ -443,9 +478,9 @@ class Signaling {
         break;
       case 'candidate':
         {
-          var peerId = data['from'];
-          var candidateMap = data['candidate'];
-          var connectionId = data['connection_id'];
+          var peerId = mapData['from'];
+          var candidateMap = mapData['candidate'];
+          var connectionId = mapData['connection_id'];
           var connection = _connections[connectionId];
           RTCIceCandidate candidate = RTCIceCandidate(candidateMap['candidate'],
               candidateMap['sdpMid'], candidateMap['sdpMLineIndex']);
@@ -465,13 +500,14 @@ class Signaling {
         break;
       case 'leave':
         {
-          var peerId = data as String;
+
+          var peerId = mapData as String;
           _closeConnectionByPeerId(peerId);
         }
         break;
       case 'bye':
         {
-          var connectionId = data['session_id'];
+          var connectionId = data['connection_id'];
           print('bye: ' + connectionId);
           var connection = _connections.remove(connectionId);
           if (connection != null) {
