@@ -132,6 +132,8 @@ class Signaling {
     MediaStream stream = userScreen
         ? await navigator.mediaDevices.getDisplayMedia(mediaConstraints)
         : await navigator.mediaDevices.getUserMedia(mediaConstraints);
+    if (_streamer)
+      onLocalStream?.call(stream);
     return stream;
   }
 
@@ -348,16 +350,15 @@ class Signaling {
       case 'offer':
         {
           var description = mapData['description'];
-          Connection? newConnection = _connections[_selfId];
-          // var media = mapData['media'];
-          // var connectionId = mapData['connection_id'];
-          // var connection = _connections[connectionId];
-          // var newConnection = await _createConnection(connection,
-          //     connectionId: connectionId, media: media, screenSharing: false);
-          // _connections[connectionId] = newConnection;
-          await newConnection!.pc?.setRemoteDescription(
+          var media = mapData['media'];
+          var connectionId = mapData['connection_id'];
+          var connection = _connections[connectionId];
+          var newConnection = await _createConnection(connection,
+              connectionId: connectionId, media: media, screenSharing: false);
+          _connections[connectionId] = newConnection;
+          await newConnection.pc?.setRemoteDescription(
               RTCSessionDescription(description['sdp'], description['type']));
-          await _createAnswer(newConnection, 'video');
+          await _createAnswer(newConnection, media);
           if (newConnection.remoteCandidates.length > 0) {
             newConnection.remoteCandidates.forEach((candidate) async {
               await newConnection.pc?.addCandidate(candidate);
@@ -379,9 +380,8 @@ class Signaling {
       case 'candidate':
         {
           var candidateMap = mapData['candidate'];
-          // var connectionId = mapData['connection_id'];
-          // var connection = _connections[connectionId];
-          var connection = _connections[_selfId];
+          var connectionId = mapData['connection_id'];
+          var connection = _connections[connectionId];
           print(_connections);
           RTCIceCandidate candidate = RTCIceCandidate(candidateMap['candidate'],
               candidateMap['sdpMid'], candidateMap['sdpMLineIndex']);
@@ -392,12 +392,9 @@ class Signaling {
               connection.remoteCandidates.add(candidate);
             }
           } else {
-            _connections[_selfId] =
-                Connection(cid: _selfId, rid: _host)
+            _connections[connectionId] =
+                Connection(cid: connectionId, rid: _host)
                   ..remoteCandidates.add(candidate);
-            // _connections[connectionId] =
-            //     Connection(cid: connectionId, rid: _host)
-            //       ..remoteCandidates.add(candidate);
           }
         }
         break;
