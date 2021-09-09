@@ -5,10 +5,10 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../widgets/random_string.dart';
 
 import '../widgets/device_info.dart'
-    if (dart.library.js) '../utils/device_info_web.dart';
+    if (dart.library.js) '../widgets/device_info_web.dart';
 import '../widgets/websocket.dart'
-    if (dart.library.js) '../utils/websocket_web.dart';
-import '../widgets/turn.dart' if (dart.library.js) '../utils/turn_web.dart';
+    if (dart.library.js) '../widgets/websocket_web.dart';
+import '../widgets/turn.dart' if (dart.library.js) '../widgets/turn_web.dart';
 
 enum SignalingState {
   ConnectionOpen,

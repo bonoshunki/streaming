@@ -15,12 +15,16 @@ class Stream extends StatefulWidget {
 
 class _StreamState extends State<Stream> {
   Signaling? _signaling;
+  Map<int, Signaling> _signalings = {};
+  int n = 0;
   List<dynamic> _streamInfo = [];
   String? _selfId;
   RTCVideoRenderer _localRenderer = RTCVideoRenderer();
   // RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
   bool _inCalling = false;
   Connection? _connection;
+  Map<int, Connection?>? _connections;
+  MediaStream? _localStream;
 
   // ignore: unused_element
   _StreamState();
@@ -46,8 +50,10 @@ class _StreamState extends State<Stream> {
   }
 
   void _connect() async {
-    _signaling ??= Signaling(widget.host, widget.streamer)
+    _signaling ??= Signaling(widget.host, widget.streamer, null, n)
       ..connect(widget.streamer);
+    _signalings[n] = _signaling!;
+    n++;
     _signaling?.onSignalingStateChange = (SignalingState state) {
       switch (state) {
         case SignalingState.ConnectionClosed:
@@ -57,13 +63,17 @@ class _StreamState extends State<Stream> {
       }
     };
 
-    _signaling?.onCallStateChange = (Connection connection, CallState state) {
+    _signaling?.onCallStateChange =
+        (Connection connection, CallState state, [MediaStream? stream]) {
       switch (state) {
         case CallState.CallStateNew:
           setState(() {
             _connection = connection;
+            _connections?[n - 1] = connection;
             _inCalling = true;
+            _localStream = stream;
           });
+          _newSignaling();
           break;
         case CallState.CallStateBye:
           setState(() {
@@ -97,6 +107,36 @@ class _StreamState extends State<Stream> {
     // _signaling?.onRemoveRemoteStream = ((_, stream) {
     //   _remoteRenderer.srcObject = null;
     // });
+  }
+
+  void _newSignaling() async {
+    _signaling ??= Signaling(widget.host, widget.streamer, _localStream, n)
+      ..connect(widget.streamer);
+    _signalings[n] = _signaling!;
+    n++;
+
+    _signaling?.onCallStateChange =
+        (Connection connection, CallState state, [MediaStream? stream]) {
+      switch (state) {
+        case CallState.CallStateNew:
+          setState(() {
+            _connection = connection;
+            _connections?[n - 1] = connection;
+            _inCalling = true;
+            _localStream = stream;
+          });
+          _newSignaling();
+          break;
+        case CallState.CallStateBye:
+          setState(() {
+            _connections?[n - 1] = null;
+          });
+          break;
+        case CallState.CallStateInvite:
+        case CallState.CallStateConnected:
+        case CallState.CallStateRinging:
+      }
+    };
   }
 
   _invitePeer(BuildContext context, bool useScreen) async {

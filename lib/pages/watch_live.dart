@@ -46,7 +46,7 @@ class _WatchState extends State<Watch> {
   }
 
   void _connect() async {
-    _signaling ??= Signaling(widget.host, widget.streamer)
+    _signaling ??= Signaling(widget.host, widget.streamer, null, 0)
       ..connect(widget.streamer);
     _signaling?.onSignalingStateChange = (SignalingState state) {
       switch (state) {
@@ -57,7 +57,7 @@ class _WatchState extends State<Watch> {
       }
     };
 
-    _signaling?.onCallStateChange = (Connection connection, CallState state) {
+    _signaling?.onCallStateChange = (Connection connection, CallState state, [MediaStream? stream]) {
       switch (state) {
         case CallState.CallStateNew:
           setState(() {

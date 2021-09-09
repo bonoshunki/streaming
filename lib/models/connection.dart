@@ -7,7 +7,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../widgets/random_string.dart';
 
 import '../widgets/websocket.dart'
-    if (dart.library.js) '../utils/websocket_web.dart';
+    if (dart.library.js) '../widgets/websocket_web.dart';
 
 enum SignalingState {
   ConnectionOpen,
@@ -35,7 +35,7 @@ class Connection {
 }
 
 class Signaling {
-  Signaling(this._host, this._streamer);
+  Signaling(this._host, this._streamer, this._localStream, this.number);
 
   JsonEncoder _encoder = JsonEncoder();
   JsonDecoder _decoder = JsonDecoder();
@@ -43,13 +43,14 @@ class Signaling {
   SimpleWebSocket? _socket;
   String _host;
   bool _streamer;
+  int number;
   // static int _port = 3000;
   Map<String, Connection> _connections = {};
   MediaStream? _localStream;
   List<MediaStream> _remoteStreams = <MediaStream>[];
 
   Function(SignalingState state)? onSignalingStateChange;
-  Function(Connection connection, CallState state)? onCallStateChange;
+  Function(Connection connection, CallState state, [MediaStream? stream])? onCallStateChange;
   Function(MediaStream stream)? onLocalStream;
   Function(Connection connection, MediaStream stream)? onAddRemoteStream;
   Function(Connection connection, MediaStream stream)? onRemoveRemoteStream;
@@ -159,25 +160,25 @@ class Signaling {
             onAddRemoteStream?.call(newConnection, stream);
             _remoteStreams.add(stream);
           };
-          await pc.addStream(_localStream!);
+          if (_streamer) {
+            await pc.addStream(_localStream!);
+          }
           break;
         case 'unified-plan':
           pc.onTrack = (event) {
             if (event.track.kind == 'video') {
               onAddRemoteStream?.call(newConnection, event.streams[0]);
+              print('added remote video');
             }
           };
-          _localStream!.getTracks().forEach((track) {
-            pc.addTrack(track, _localStream!);
-          });
+          if (_streamer)
+            _localStream!.getTracks().forEach((track) {
+              pc.addTrack(track, _localStream!);
+            });
           break;
       }
     }
     pc.onIceCandidate = (candidate) async {
-      if (candidate == null) {
-        print('onIceCandidate: complete!');
-        return;
-      }
       await Future.delayed(
           const Duration(seconds: 1),
           () => _sendVer2({
@@ -200,15 +201,23 @@ class Signaling {
         return (it.id == stream.id);
       });
     };
-
     newConnection.pc = pc;
     return newConnection;
   }
 
   Future<void> _createOffer(Connection connection, String media) async {
     try {
-      RTCSessionDescription s = await connection.pc!
-          .createOffer(media == 'data' ? _dcConstraints : {});
+      RTCSessionDescription s = await connection.pc!.createOffer(_streamer
+          ? {}
+          : {
+              'mandatory': {
+                'OfferToReceiveAudio': true,
+                'OfferToReceiveVideo': true,
+              },
+              'optional': [],
+            });
+      // RTCSessionDescription s = await connection.pc!
+      //     .createOffer(media == 'data' ? _dcConstraints : {});
       await connection.pc!.setLocalDescription(s);
       _sendVer2({
         'type': 'offer',
@@ -321,6 +330,7 @@ class Signaling {
           var newConnection = await _createConnection(connection,
               connectionId: connectionId, media: media, screenSharing: false);
           _connections[connectionId] = newConnection;
+          print('created new connection');
           await newConnection.pc?.setRemoteDescription(
               RTCSessionDescription(description['sdp'], description['type']));
           await _createAnswer(newConnection, media);
@@ -330,7 +340,7 @@ class Signaling {
             });
             newConnection.remoteCandidates.clear();
           }
-          onCallStateChange?.call(newConnection, CallState.CallStateNew);
+          onCallStateChange?.call(newConnection, CallState.CallStateNew, _localStream);
         }
         break;
       case 'answer':
