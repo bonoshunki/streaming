@@ -91,7 +91,7 @@ class _StreamState extends State<Stream> {
     });
 
     // _signaling?.onAddRemoteStream = ((_, stream) {
-    //   _remoteRenderer.srcObject = stream;
+    //   print('aaaaaaaaaaaaaaaaaa');
     // });
 
     // _signaling?.onRemoveRemoteStream = ((_, stream) {

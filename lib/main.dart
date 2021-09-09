@@ -82,9 +82,6 @@ class _MyAppState extends State<MyApp> {
           Navigator.push(
               context,
               MaterialPageRoute(
-                  // builder: (BuildContext context) => _datachannel
-                  //     ? DataChannelSample(host: _server)
-                  //     : CallSample(host: _server)));
                   builder: (BuildContext context) => _streamer
                       ? Stream(host: _server, streamer: _streamer)
                       : Watch(host: _server, streamer: _streamer)));

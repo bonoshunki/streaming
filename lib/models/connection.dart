@@ -132,18 +132,9 @@ class Signaling {
     MediaStream stream = userScreen
         ? await navigator.mediaDevices.getDisplayMedia(mediaConstraints)
         : await navigator.mediaDevices.getUserMedia(mediaConstraints);
-    if (_streamer)
-      onLocalStream?.call(stream);
+    if (_streamer) onLocalStream?.call(stream);
     return stream;
   }
-
-  // _send(event, data) {
-  //   var request = Map();
-  //   request["type"] = event;
-  //   request["data"] = data;
-  //   // data["type"] = event;
-  //   _socket?.send(_encoder.convert(data));
-  // }
 
   _sendVer2(data) {
     _socket?.send(_encoder.convert(data));
@@ -155,13 +146,12 @@ class Signaling {
       required bool screenSharing}) async {
     var newConnection = connection ?? Connection(cid: connectionId, rid: _host);
     if (media != 'data')
-      _localStream = await createStream(media, screenSharing);
+      _localStream = _localStream ?? await createStream(media, screenSharing);
     print(_iceServers);
     RTCPeerConnection pc = await createPeerConnection({
       ..._iceServers,
       ...{'sdpSemantics': sdpSemantics}
     }, _config);
-    print('1');
     if (media != 'data') {
       switch (sdpSemantics) {
         case 'plan-b':
@@ -183,7 +173,6 @@ class Signaling {
           break;
       }
     }
-    print('2');
     pc.onIceCandidate = (candidate) async {
       if (candidate == null) {
         print('onIceCandidate: complete!');
@@ -212,12 +201,7 @@ class Signaling {
       });
     };
 
-    // pc.onDataChannel = (channel) {
-    //   _addDataChannel(newConnection, channel);
-    // };
-
     newConnection.pc = pc;
-    print('created new connection');
     return newConnection;
   }
 
@@ -228,7 +212,6 @@ class Signaling {
       await connection.pc!.setLocalDescription(s);
       _sendVer2({
         'type': 'offer',
-        'from': _selfId,
         'description': {'sdp': s.sdp, 'type': s.type},
         'connection_id': connection.cid,
         'media': media,
@@ -241,14 +224,8 @@ class Signaling {
   void invite(String media, bool useScreen) async {
     var connectionId = _selfId;
     Connection connection = await _createConnection(null,
-        // peerId: peerId,
-        connectionId: connectionId,
-        media: media,
-        screenSharing: useScreen);
+        connectionId: connectionId, media: media, screenSharing: useScreen);
     _connections[connectionId] = connection;
-    // if (media == 'data') {
-    //   _createDataChannel(connection);
-    // }
     if (!_streamer) {
       _createOffer(connection, media);
     }
@@ -287,12 +264,6 @@ class Signaling {
         'description': {'sdp': s.sdp, 'type': s.type},
         'connection_id': connection.cid,
       });
-      // _send('answer', {
-      //   'to': connection.pid,
-      //   'from': _selfId,
-      //   'description': {'sdp': s.sdp, 'type': s.type},
-      //   'connection_id': connection.cid,
-      // });
     } catch (e) {
       print(e.toString());
     }
@@ -324,14 +295,12 @@ class Signaling {
         }
         break;
       case 'accept':
-        // mapData.remove('type');
         {
           if (_streamer) {
             mapData['roomId'] = _host;
             List<dynamic> streamInfo = [];
             streamInfo.add(mapData);
             print(mapData);
-            // mapData.forEach((key, value) => peers.add(value));
             if (onPeersUpdate != null) {
               Map<String, dynamic> event = Map<String, dynamic>();
               event['self'] = _selfId;
@@ -339,10 +308,6 @@ class Signaling {
               onPeersUpdate?.call(event);
             }
           } else {
-            // Connection conn = Connection(cid: _selfId, rid: _host);
-            // conn = await _createConnectionForViewer(conn,
-            //     connectionId: _selfId, screenSharing: false);
-            // await _createOffer(conn, 'video');
             invite('video', false);
           }
         }
@@ -382,7 +347,6 @@ class Signaling {
           var candidateMap = mapData['candidate'];
           var connectionId = mapData['connection_id'];
           var connection = _connections[connectionId];
-          print(_connections);
           RTCIceCandidate candidate = RTCIceCandidate(candidateMap['candidate'],
               candidateMap['sdpMid'], candidateMap['sdpMLineIndex']);
           if (connection != null) {
@@ -396,6 +360,10 @@ class Signaling {
                 Connection(cid: connectionId, rid: _host)
                   ..remoteCandidates.add(candidate);
           }
+          await Future.delayed(
+            const Duration(seconds: 2),
+            () => print(connection!.pc!.connectionState),
+          );
         }
         break;
       case 'leave':
@@ -421,39 +389,16 @@ class Signaling {
         }
         break;
       default:
+        print('check well');
         break;
     }
   }
 
   Future<void> connect(bool streamer) async {
-    // var url = 'https://192.168.0.21:3000/signaling';
-    // var url = 'https://0.0.0.0:3000/signaling';
     var url = 'https://demia.tk/signaling';
     _socket = SimpleWebSocket(url);
 
     print('connect to $url');
-
-    // if (_turnCredential == null) {
-    //   try {
-    //     _turnCredential = await getTurnCredential(_host, _port);
-    //     /*{
-    //         "username": "1584195784:mbzrxpgjys",
-    //         "password": "isyl6FF6nqMTB9/ig5MrMRUXqZg",
-    //         "ttl": 86400,
-    //         "uris": ["turn:127.0.0.1:19302?transport=udp"]
-    //       }
-    //     */
-    //     _iceServers = {
-    //       'iceServers': [
-    //         {
-    //           'urls': _turnCredential['uris'][0],
-    //           'username': _turnCredential['username'],
-    //           'credential': _turnCredential['password']
-    //         },
-    //       ]
-    //     };
-    //   } catch (e) {}
-    // }
 
     _socket?.onOpen = () {
       print('onOpen');

@@ -86,9 +86,9 @@ class _WatchState extends State<Watch> {
       });
     });
 
-    // _signaling?.onLocalStream = ((stream) {
-    //   // _localRenderer.srcObject = stream;
-    // });
+    _signaling?.onLocalStream = ((stream) {
+      // _localRenderer.srcObject = stream;
+    });
 
     _signaling?.onAddRemoteStream = ((_, stream) {
       _remoteRenderer.srcObject = stream;
@@ -111,45 +111,6 @@ class _WatchState extends State<Watch> {
     }
   }
 
-  // _switchCamera() {
-  //   _signaling?.switchCamera();
-  // }
-
-  // _muteMic() {
-  //   _signaling?.muteMic();
-  // }
-
-  // _buildRow(context, peer) {
-  //   var self = (peer['connectionId'] == _selfId);
-  //   return ListBody(children: <Widget>[
-  //     ListTile(
-  //       title: Text(self
-  //           ? peer['connectionId'] + '[Your self]'
-  //           : peer['connectionId'] + '[' + peer['connectionId'] + ']'),
-  //       onTap: null,
-  //       trailing: SizedBox(
-  //           width: 100.0,
-  //           child: Row(
-  //               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //               children: <Widget>[
-  //                 IconButton(
-  //                   icon: Icon(self ? Icons.close : Icons.videocam,
-  //                       color: self ? Colors.grey : Colors.black),
-  //                   onPressed: () => _invitePeer(context, peer['connectionId'], false),
-  //                   tooltip: 'Video calling',
-  //                 ),
-  //                 IconButton(
-  //                   icon: Icon(self ? Icons.close : Icons.screen_share,
-  //                       color: self ? Colors.grey : Colors.black),
-  //                   onPressed: () => _invitePeer(context, peer['connectionId'], true),
-  //                   tooltip: 'Screen sharing',
-  //                 )
-  //               ])),
-  //       subtitle: Text('id: ' + peer['connectionId']),
-  //     ),
-  //     Divider()
-  //   ]);
-  // }
 
   @override
   Widget build(BuildContext context) {
