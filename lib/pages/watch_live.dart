@@ -33,7 +33,6 @@ class _WatchState extends State<Watch> {
   }
 
   initRenderers() async {
-    // await _localRenderer.initialize();
     await _remoteRenderer.initialize();
   }
 
@@ -41,7 +40,6 @@ class _WatchState extends State<Watch> {
   deactivate() {
     super.deactivate();
     _signaling?.close();
-    // _localRenderer.dispose();
     _remoteRenderer.dispose();
   }
 
@@ -57,7 +55,8 @@ class _WatchState extends State<Watch> {
       }
     };
 
-    _signaling?.onCallStateChange = (Connection connection, CallState state, [MediaStream? stream]) {
+    _signaling?.onCallStateChange =
+        (Connection connection, CallState state, [MediaStream? stream]) {
       switch (state) {
         case CallState.CallStateNew:
           setState(() {
@@ -67,7 +66,6 @@ class _WatchState extends State<Watch> {
           break;
         case CallState.CallStateBye:
           setState(() {
-            // _localRenderer.srcObject = null;
             _remoteRenderer.srcObject = null;
             _inCalling = false;
             _connection = null;
@@ -86,12 +84,10 @@ class _WatchState extends State<Watch> {
       });
     });
 
-    _signaling?.onLocalStream = ((stream) {
-      // _localRenderer.srcObject = stream;
-    });
-
     _signaling?.onAddRemoteStream = ((_, stream) {
-      _remoteRenderer.srcObject = stream;
+      setState(() {
+        _remoteRenderer.srcObject = stream;
+      });
     });
 
     _signaling?.onRemoveRemoteStream = ((_, stream) {
@@ -111,12 +107,11 @@ class _WatchState extends State<Watch> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Watch live'),
+        title: Text('配信を見る'),
         actions: <Widget>[
           IconButton(
             icon: const Icon(Icons.settings),

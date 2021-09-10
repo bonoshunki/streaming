@@ -123,14 +123,14 @@ class _MyAppState extends State<MyApp> {
   _initItems() {
     items = <RouteItem>[
       RouteItem(
-          title: 'Stream',
+          title: '配信をする',
           subtitle: 'For Streamer',
           push: (BuildContext context) {
             _streamer = true;
             _showAddressDialog(context);
           }),
       RouteItem(
-          title: 'Watch live',
+          title: '配信を見る',
           subtitle: 'For viewer.',
           push: (BuildContext context) {
             _streamer = false;

@@ -160,14 +160,10 @@ class _StreamState extends State<Stream> {
   }
 
   _buildRow(context, peer) {
-    // var self = (peer['connectionId'] == _selfId);
     return ListBody(children: <Widget>[
       ListTile(
         title: Text(
-            // self
-            //   ? peer['connectionId'] + '[Your self]'
-            //   : peer['connectionId'] + '[' + peer['connectionId'] + ']'
-            'Choose video camera or screen sharing (Screen sharing isn\'t available for now)'),
+            'ビデオ配信か画面共有かを選んでください (Screen sharing isn\'t available for now)'),
         onTap: null,
         trailing: SizedBox(
             width: 100.0,
@@ -205,7 +201,7 @@ class _StreamState extends State<Stream> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Stream live'),
+        title: Text('配信をする'),
         actions: <Widget>[
           IconButton(
             icon: const Icon(Icons.settings),
