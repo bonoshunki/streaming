@@ -50,7 +50,8 @@ class Signaling {
   List<MediaStream> _remoteStreams = <MediaStream>[];
 
   Function(SignalingState state)? onSignalingStateChange;
-  Function(Connection connection, CallState state, [MediaStream? stream])? onCallStateChange;
+  Function(Connection connection, CallState state, [MediaStream? stream])?
+      onCallStateChange;
   Function(MediaStream stream)? onLocalStream;
   Function(Connection connection, MediaStream stream)? onAddRemoteStream;
   Function(Connection connection, MediaStream stream)? onRemoveRemoteStream;
@@ -146,7 +147,7 @@ class Signaling {
       required String media,
       required bool screenSharing}) async {
     var newConnection = connection ?? Connection(cid: connectionId, rid: _host);
-    if (media != 'data')
+    if (media != 'data' && _streamer)
       _localStream = _localStream ?? await createStream(media, screenSharing);
     print(_iceServers);
     RTCPeerConnection pc = await createPeerConnection({
@@ -165,16 +166,24 @@ class Signaling {
           }
           break;
         case 'unified-plan':
+          print('unified!');
           pc.onTrack = (event) {
             if (event.track.kind == 'video') {
               onAddRemoteStream?.call(newConnection, event.streams[0]);
               print('added remote video');
             }
           };
-          if (_streamer)
+          if (_streamer) {
             _localStream!.getTracks().forEach((track) {
               pc.addTrack(track, _localStream!);
             });
+          } else {
+            var peerInit =
+                RTCRtpTransceiverInit(direction: TransceiverDirection.RecvOnly);
+            pc.addTransceiver(kind: RTCRtpMediaType.RTCRtpMediaTypeVideo, init: peerInit);
+            pc.addTransceiver(kind: RTCRtpMediaType.RTCRtpMediaTypeAudio, init: peerInit);
+          }
+          print('aaaaa');
           break;
       }
     }
@@ -340,7 +349,8 @@ class Signaling {
             });
             newConnection.remoteCandidates.clear();
           }
-          onCallStateChange?.call(newConnection, CallState.CallStateNew, _localStream);
+          onCallStateChange?.call(
+              newConnection, CallState.CallStateNew, _localStream);
         }
         break;
       case 'answer':
